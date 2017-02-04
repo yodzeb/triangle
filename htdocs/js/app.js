@@ -59,38 +59,48 @@ var app = angular.module('game', [  'ngMap' ] )
 	    function draw_targets () {
 		NgMap.getMap().then(function(map) {
                     game.api_command("targets").then(function(res) {
-                        ctrl.targets = res;
-			if (ctrl.targets_markers == undefined) {
-			    for (t in ctrl.targets) {
-				var target = ctrl.targets[t];
+			
+			for (t in res) {
+			    if (ctrl.targets[res[t]["name"]] == undefined)
+				ctrl.targets[res[t]["name"]] = {};
+                            ctrl.targets[res[t]["name"]]["value"] = res[t];
+			}
+
+			console.log (ctrl.targets);
+			
+			for (t in ctrl.targets) {
+			    var target = ctrl.targets[t]["value"];
+			    if (ctrl.targets[t]["marker"] == undefined) {
+				
 				var wpsCircle = new google.maps.Circle({
-                                    strokeColor: '#FF0000',
-                                    strokeOpacity: 0.8,
-                                    strokeWeight: 2,
-                                    fillColor: '#FF0000',
+				    strokeColor: '#FF0000',
+				    strokeOpacity: 0.8,
+				    strokeWeight: 2,
+				    fillColor: '#FF0000',
 				    clickable: false,
-                                    fillOpacity: 0.35,
-                                    map: map,
-                                    center: {lat: parseFloat(target.lat), lng: parseFloat(target.lon)},
+				    fillOpacity: 0.35,
+				    map: map,
+				    center: {lat: parseFloat(target.lat), lng: parseFloat(target.lon)},
 				    radius: 500
 				});
+				ctrl.targets[t]["marker"] = wpsCircle;
 			    }
-			}
-			for (t in ctrl.targets_markers) {
-			    var target = ctrl.target[t];
+
 			    if (target.flagged == 1) {
-				ctrl.targets_markers[t].setOptions({
+				ctrl.targets[t]["marker"].setOptions({
 				    strokeColor: '#00FF00',
 				    fillColor  : '#00FF00'
 				});
 			    }
 			    else {
-				ctrl.targets_markers[t].setOptions({
+				ctrl.targets[t]["marker"].setOptions({
 				    fillColor: '#FF0000',
 				    strokeColor: '#FF0000'
 				});
 			    }
+
 			}
+
 		    });
 		});
 	    }
@@ -103,6 +113,23 @@ var app = angular.module('game', [  'ngMap' ] )
 			
 			for (p in ctrl.probes) {
 			    var probe = ctrl.probes[p];
+			    var position = new google.maps.LatLng( parseFloat(probe.lat), parseFloat(probe.lon) );
+			    var image = {
+				url: '../images/radar.gif',
+				scaledSize: new google.maps.Size(50, 50), // scaled size
+				origin: new google.maps.Point(0,0), // origin
+				anchor: new google.maps.Point(0, 0) // anchor
+			    };
+			    var marker = new google.maps.Marker({
+				map: map,
+				draggable:false,
+				position: position,
+				//icon: "/images/radar.gif",
+				icon: image,
+				optimized: false
+			    }); 
+			    console.log(marker);
+			    /*
 			    var wpsCircle = new google.maps.Circle({
 				strokeColor: '#FFFF00',
 				strokeOpacity: 0.8,
@@ -114,28 +141,42 @@ var app = angular.module('game', [  'ngMap' ] )
 				center: {lat: parseFloat(probe.lat), lng: parseFloat(probe.lon)},
 				radius: 200
 			    });
-			    map
+*/
 			}
 		    });
 		});
 	    };
 	    
-	    function update () {
-
-		game.api_command("probes").then (function (res_probe) {
-
-		});
-		
-		game.api_command("ping").then (function (res) {
-		    game.api_command("update").then(function (res2) {
-
-		    });
+	    function draw_position () {
+		NgMap.getMap().then(function(map) {
+		    var new_pos = new google.maps.LatLng(ctrl.position.lat, ctrl.position.lon);
+		    if (ctrl.my_position == undefined)  
+			ctrl.my_position = new google.maps.Marker({
+			    position: new_pos,
+			    title:"Me!",
+			    map: map
+			});
+		    ctrl.my_position.setPosition(new_pos);
 		});
 	    }
+
+	    function update () {
+		
+		game.api_command("ping").then (function (res) {
+		    draw_targets();
+		    game.api_command("update").then(function (res2) {
+			ctrl.position = res2.POSITION;
+			ctrl.flag     = res2.FLAG; // hihi
+			draw_position();
+		    });
+		});
+
+	    }
 	    
+	    ctrl.targets = {};	    
 	    draw_targets();
 	    draw_probes();
-	    update();
+	    //update();
 	    $interval ( update, 10000 );	    
 	    
 	}
