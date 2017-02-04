@@ -1,0 +1,16 @@
+<div layout-xs="column" layout-gt-xs="row" layout-fill >
+
+  <ng-map zoom="11" >
+    <control name="overviewMap" opened="true" />
+  </ng-map>
+
+  
+</div>
+
+<div class="floatingbox">
+  <div layout="column">
+    <div>Target1: {{ $ctrl.target1 }}</div>
+    <div>Target2: {{ $ctrl.target2 }}</div>
+    <div>Target3: {{ $ctrl.target3 }}</div>
+    <div>{{$ctrl.flag}}</div>
+</div>
