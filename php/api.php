@@ -2,7 +2,6 @@
 
 session_start();
   
-
 $targets = array(
 		 array(
 		       "name" => "Cathedrale",
@@ -15,37 +14,48 @@ $targets = array(
 		       "lon"  => "4.013958",
 		       ),
 		 array(
-		       "Univ" => "Univ",
+		       "name" => "Univ",
 		       "lat"  => "49.239009",
 		       "lon"  => "4.003143",
 		       )
 		 );
 
 
-$probes_ips = array( "192.168.0.43", "192.168.0.44", "192.168.0.45");
-$probes     = array(
-		    "chenay" => array(
-				   "lat" => "49.297255",
-				   "lon" => "3.93023",
-				   ),
-		    "Witry-les-Reims" => array(
-				   "lat" => "49.291993",
-				   "lon" => "4.127941",
-				   ),
-		    "Sermiers" => array(
-				     "lat" => "49.162849",
-				     "lon" => "3.983402",
-				     )
+$probes     = array(array(
+			  "name"=> "chenay",
+			  "ip"  => "192.168.0.43",
+			  "lag" => "5000",
+			  "lat" => "49.297255",
+			  "lon" => "3.93023",
+			  ),
+		    array("name" => "Witry-les-Reims",
+			  "ip"   => "192.168.0.44",
+			  "lag"  => "5000",
+			  "lat"  => "49.291993",
+			  "lon"  => "4.127941",
+			  ),
+		    array(
+			  "name" => "Sermiers",
+			  "ip"  => "192.168.0.45",
+			  "lag" => "5000",
+			  "lat" => "49.162849",
+			  "lon" => "3.983402",
+			  )
 		    );
 
 
 
-include_once("functions.php");
+include("functions.php");
 
 
 $command = $_GET["cmd"];
 
 if ($command === "targets") {
+  foreach ($targets as &$t) {
+    if ($_SESSION["TARGET"][$t["name"]] > 0) {
+      $t["flagged"] =1;
+    }
+  }
   print json_encode ($targets);
 }
 elseif ($command === "update") {
@@ -56,7 +66,8 @@ elseif ($command === "update") {
   print json_encode ( $probes );
 }
   elseif ($command === "ping") {
-  do_ping();
+
+  do_ping($probes, $targets);
 }
     
 
