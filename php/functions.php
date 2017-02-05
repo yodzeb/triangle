@@ -49,6 +49,9 @@ function update_targets ($targets) {
   if ($count == sizeof($targets)) {
     $_SESSION["FLAG"] = file("../flag/flag") [0];
   }
+  else {
+    $_SESSION["FLAG"] = "--- No flag yet ---";
+  }
 }
 
 
@@ -70,52 +73,76 @@ function update_position ($probes) {
   $LonC  = $probes[2]["lon"];	   
   $DistC = $_SESSION["RESULTS"][2]*$new_max/$max ;
 
-  print "max:".$max;
-  //system("pwd");
-
-  print ("../bin/position.py $LatA $LonA $DistA $LatB $LonB $DistB $LatC $LonC $DistC") ;
-
   exec ("../bin/position.py $LatA $LonA $DistA $LatB $LonB $DistB $LatC $LonC $DistC", $position) ;
 
   if (preg_match ("/([\d\.]+) ([\d\.]+)/", $position[0], $res)) {
-    print ("Position : ");
     $_SESSION["POSITION"] = array("lat" => $res[1], "lon" => $res[2] );
   }
   
 };
 
 
-
-function do_ping($probes, $targets) {
-  print "blabla";
+function exec_ping($probes) {
 
   $count = 0;
   $_SESSION["RESULTS"] = NULL;
 
   foreach ($probes as $p) {
     $ip = $p["ip"];
-    print "ip: ".$ip;
-    $res = ping_client($ip, $_SESSION["CLIENT_IP"]);
+    if (array_key_exists('PROBING', $_SESSION) &&
+	$_SESSION["PROBING"] === "tcp") {
+      $res = ping_tcp_client($ip, $_SESSION["CLIENT_IP"]);
+    }
+    else {
+      $res = ping_icmp_client($ip, $_SESSION["CLIENT_IP"]);
+    }
     $_SESSION["RESULTS"][$count] = $p["lag"] + (int)$res ;
     $count++;
   }
-  print json_encode ($_SESSION);
-
-  update_position ($probes);
-  update_targets  ($targets);
-
 }
 
-function ping_client ($source_ip, $destination_ip) {
-  exec ("ping -I $source_ip -c 3 $destination_ip", $ping_res);
-  
+function ping_tcp_client ( $ip, $client_ip ) {
   $average = 0;
   $count   = 0;
 
-  foreach ($ping_res as $line) {
-    if (preg_match("/time\=([\d\.]+)\s/s", $line, $matches)) {
-      $count++;
-      $average+=$matches[1];
+  for ($i=0; $i<4; $i++) {
+    $tB = microtime(true); 
+    
+    $sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+    socket_bind($sock, $ip);
+    $fP = socket_connect($sock, $client_ip, 81);
+    
+    $tA = microtime(true); 
+
+    //print round((($tA - $tB) * 1000))."\n";
+    $average += round((($tA - $tB) * 1000), 0);
+    $count++;
+        
+    socket_close($sock);
+  }
+
+  $average /= $count;
+  
+  if ($average < 1) {
+    $average = 1;
+  }
+  return $average;
+
+}
+
+
+function ping_icmp_client ($source_ip, $destination_ip) {
+
+  $average = 0;
+  $count   = 0;
+  
+  for ($i=0; $i<4; $i++) {
+    exec ("ping -I $source_ip -c 1 $destination_ip -W 2", $ping_res);
+    foreach ($ping_res as $line) {
+      if (preg_match("/time\=([\d\.]+)\s/s", $line, $matches)) {
+	$count++;
+	$average+=$matches[1];
+      }
     }
   }
 
@@ -126,5 +153,13 @@ function ping_client ($source_ip, $destination_ip) {
   }
   return $average;
 }
+
+
+function do_ping ($probes, $targets) {
+  exec_ping($probes);
+  update_position ($probes);
+  update_targets  ($targets);
+}
+
 
 ?>

@@ -4,10 +4,12 @@ var app = angular.module('game', [  'ngMap' ] )
 	
 	var api_url = "/api/api.php";
 
-	function api_command (command) {
+	function api_command (command, other_params) {
+	    if (other_params == undefined)
+		other_params = "";
 	    var req = {
 		method: "GET",
-                url:    api_url+"?cmd="+command
+                url:    api_url+"?cmd="+command+other_params
 	    };
 	    return $http(req).then(function (res) {
 		return res.data;
@@ -26,8 +28,6 @@ var app = angular.module('game', [  'ngMap' ] )
 	controller : function (game, NgMap, $interval) {
 	    var ctrl = this;
 	    
-	    console.log("triangle controller");
-
 	    function recenter () {
 		NgMap.getMap().then(function(map) {
 		
@@ -48,7 +48,6 @@ var app = angular.module('game', [  'ngMap' ] )
 		    styles: mapStyle
 		};
 		map.setOptions(opts);
-		console.log ("setttings changed");
 		
 		map.addListener('click', function(event) {
 		    //$scope.fakepos(event.latLng);
@@ -66,7 +65,6 @@ var app = angular.module('game', [  'ngMap' ] )
                             ctrl.targets[res[t]["name"]]["value"] = res[t];
 			}
 
-			console.log (ctrl.targets);
 			
 			for (t in ctrl.targets) {
 			    var target = ctrl.targets[t]["value"];
@@ -116,7 +114,7 @@ var app = angular.module('game', [  'ngMap' ] )
 			    var position = new google.maps.LatLng( parseFloat(probe.lat), parseFloat(probe.lon) );
 			    var image = {
 				url: '../images/radar.gif',
-				scaledSize: new google.maps.Size(50, 50), // scaled size
+				scaledSize: new google.maps.Size(40, 40), // scaled size5D
 				origin: new google.maps.Point(0,0), // origin
 				anchor: new google.maps.Point(0, 0) // anchor
 			    };
@@ -124,24 +122,9 @@ var app = angular.module('game', [  'ngMap' ] )
 				map: map,
 				draggable:false,
 				position: position,
-				//icon: "/images/radar.gif",
 				icon: image,
 				optimized: false
 			    }); 
-			    console.log(marker);
-			    /*
-			    var wpsCircle = new google.maps.Circle({
-				strokeColor: '#FFFF00',
-				strokeOpacity: 0.8,
-				strokeWeight: 2,
-				fillColor: '#FFFF00',
-				clickable: false,
-				fillOpacity: 0.35,
-				map: map,
-				center: {lat: parseFloat(probe.lat), lng: parseFloat(probe.lon)},
-				radius: 200
-			    });
-*/
 			}
 		    });
 		});
@@ -161,22 +144,33 @@ var app = angular.module('game', [  'ngMap' ] )
 	    }
 
 	    function update () {
-		
-		game.api_command("ping").then (function (res) {
+		var other_params="";
+		if (ctrl.tcp != undefined && ctrl.tcp)
+		    other_params = "&probe=tcp";
+		else if (ctrl.tcp != undefined &&  !ctrl.tcp) {
+		    other_params = "&probe=icmp";
+		}
+
+		game.api_command("ping", other_params).then (function (res) {
 		    draw_targets();
 		    game.api_command("update").then(function (res2) {
+			if (res2.PROBING === "tcp")
+			    ctrl.tcp = true;
 			ctrl.position = res2.POSITION;
 			ctrl.flag     = res2.FLAG; // hihi
 			draw_position();
 		    });
 		});
+	    }
 
+	    ctrl.update = function () {
+		update();
 	    }
 	    
 	    ctrl.targets = {};	    
 	    draw_targets();
 	    draw_probes();
-	    //update();
+	    update();
 	    $interval ( update, 10000 );	    
 	    
 	}
